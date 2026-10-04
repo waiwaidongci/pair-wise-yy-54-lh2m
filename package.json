@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "vite --host 0.0.0.0 --port 62054",
     "build": "vue-tsc --noEmit && vite build",
-    "preview": "vite preview --host 0.0.0.0 --port 62054"
+    "preview": "vite preview --host 0.0.0.0 --port 62054",
+    "test:ledger": "esbuild src/ledger/engine.test.ts --bundle --platform=node --format=cjs --outfile=/tmp/ledger-test.cjs && node /tmp/ledger-test.cjs"
   },
   "dependencies": {
     "@apollo/client": "^3.13.9",

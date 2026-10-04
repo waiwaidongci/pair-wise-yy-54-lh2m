@@ -2,8 +2,10 @@
 import { nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import maplibregl, { Map as MapLibreMap } from 'maplibre-gl'
 import { useSchemeStore } from '../store/scheme'
+import { useLedgerStore } from '../store/ledger'
 
 const store = useSchemeStore()
+const ledgerStore = useLedgerStore()
 const mapEl = ref<HTMLDivElement>()
 let map: MapLibreMap | undefined
 const layers = ref({ closure: true, detour: true, ambulance: true, bus: true, adjacent: true })
@@ -25,6 +27,13 @@ function drawAll() {
   addGeoSource('adjacent', [[121.502,31.244],[121.514,31.236],[121.524,31.228]], '#7c3aed')
 }
 function toggleLayer(id: string, visible: boolean) { if (map?.getLayer(id)) map.setLayoutProperty(id, 'visibility', visible ? 'visible' : 'none') }
+// 阶段开始时间一变：通行账预占/会签/通告草稿失效重算
+function changeStart(value: string) {
+  store.updateStage({ start: value })
+  if (store.selectedStageId === 'ST-02' && value) ledgerStore.applyStageDateChange(value)
+}
+// 绕行调整：通行账同样失效重算
+function changeDetour() { ledgerStore.applyDetourChange() }
 function fit() { const bounds = new maplibregl.LngLatBounds(); store.scheme.stages.flatMap((stage) => stage.route).forEach((point) => bounds.extend(point)); map?.fitBounds(bounds, { padding: 60 }) }
 function getStageFromMap() { return store.selectedStage }
 onMounted(async () => {
@@ -60,9 +69,9 @@ watch(layers, () => {
       <a-form layout="vertical" :model="store.selectedStage || {}">
         <a-form-item label="车道占用"><a-input :model-value="store.selectedStage?.lanes" @change="(value: string) => store.updateStage({ lanes: value })" /></a-form-item>
         <a-form-item label="阶段名称"><a-input :model-value="store.selectedStage?.name" @change="(value: string) => store.updateStage({ name: value })" /></a-form-item>
-        <div class="two"><a-form-item label="开始"><a-date-picker :model-value="store.selectedStage?.start" @change="(value: any) => store.updateStage({ start: value })" /></a-form-item><a-form-item label="结束"><a-date-picker :model-value="store.selectedStage?.end" @change="(value: any) => store.updateStage({ end: value })" /></a-form-item></div>
+        <div class="two"><a-form-item label="开始（改动触发通行账重算）"><a-date-picker :model-value="store.selectedStage?.start" @change="(value: any) => changeStart(value)" /></a-form-item><a-form-item label="结束"><a-date-picker :model-value="store.selectedStage?.end" @change="(value: any) => store.updateStage({ end: value })" /></a-form-item></div>
       </a-form>
-      <h3>绕行比较</h3>
+      <h3>绕行比较 <a-button size="mini" type="text" @click="changeDetour">模拟绕行调整 → 通行账 F+1</a-button></h3>
       <div v-for="route in store.scheme.detours" :key="route.id" class="detour"><div><b>{{ route.name }}</b><small>{{ route.distance }} km · 增加 {{ route.extraMinutes }} 分钟</small></div><a-tag :color="route.extraMinutes > 10 ? 'orange' : 'green'">{{ route.extraMinutes > 10 ? '关注' : '可用' }}</a-tag></div>
       <a-divider />
       <h3>路段冲突</h3>

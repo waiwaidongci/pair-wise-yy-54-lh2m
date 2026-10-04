@@ -1,10 +1,13 @@
 <script setup lang="ts">
 import { ref } from 'vue'
+import { Message } from '@arco-design/web-vue'
 import { useMutation } from '@vue/apollo-composable'
 import { COMMENTS_MUTATION } from '../graphql'
 import { useSchemeStore } from '../store/scheme'
+import { useLedgerStore } from '../store/ledger'
 
 const store = useSchemeStore()
+const ledgerStore = useLedgerStore()
 const { mutate } = useMutation(COMMENTS_MUTATION)
 const compare = ref(['ST-01', 'ST-02'])
 const selectedVersion = ref('v7')
@@ -19,18 +22,24 @@ function resolve(id: string, status: '已接受' | '已退回') {
   void mutate({ id, status })
 }
 function exportNotice() {
-  const text = [`${store.scheme.project} 施工封路公开通告`, `范围：${store.scheme.area}`, `版本：v${store.scheme.version}`, '', ...store.scheme.stages.map((stage) => `${stage.start} 至 ${stage.end}｜${stage.name}｜${stage.lanes}`), '', '绕行建议：', ...store.scheme.detours.map((route) => `${route.name}，增加约 ${route.extraMinutes} 分钟`), '', '本通告由建设、交通、公交、应急单位联合确认。'].join('\n')
+  // 通告闸门：通行账未核对窗口清零 / 有排队冲突 / 会签失效前，不出通告
+  if (!ledgerStore.canPublish || ledgerStore.ledger.notice.state !== 'ready') {
+    const reason = ledgerStore.blockedReasons[0] ?? '通行账未清零'
+    Message.warning({ content: `通告暂不可出具：${reason}`, duration: 4000 })
+    return
+  }
+  const text = ledgerStore.ledger.notice.text
   const blob = new Blob([text], { type: 'text/plain;charset=utf-8' })
   const link = document.createElement('a')
   link.href = URL.createObjectURL(blob)
-  link.download = `封路公开通告-${store.scheme.id}-v${store.scheme.version}.txt`
+  link.download = `通行通告-F${ledgerStore.fingerprint}.txt`
   link.click()
   URL.revokeObjectURL(link.href)
 }
 </script>
 
 <template>
-  <section class="page-head compact"><div><p class="eyebrow">条件会签与版本批复</p><h1>路段意见与阶段审批</h1><p>各方意见锚定具体路段和几何版本，审批人可逐项接受、退回并导出公开通告包。</p></div><a-button type="primary" @click="exportNotice">导出公开通告包</a-button></section>
+  <section class="page-head compact"><div><p class="eyebrow">条件会签与版本批复</p><h1>路段意见与阶段审批</h1><p>各方意见锚定具体路段和几何版本，审批人可逐项接受、退回并导出公开通告包。</p></div><a-space><a-tag :color="ledgerStore.canPublish ? 'green' : 'red'">{{ ledgerStore.canPublish ? '通行账已清零可通告' : `通告拦截 · ${ledgerStore.blockedReasons.length} 项` }}</a-tag><a-button type="primary" @click="exportNotice">导出公开通告包</a-button></a-space></section>
   <div class="review-grid">
     <article class="card">
       <div class="panel-head"><div><h2>会签意见</h2><p>原意见不可覆盖，处理动作进入审计记录</p></div><a-tag color="orange">{{ store.scheme.comments.filter((item) => item.status === '待处理').length }} 待处理</a-tag></div>
