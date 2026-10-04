@@ -1,0 +1,27 @@
+{
+  "name": "road-closure-coordination",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 0.0.0.0 --port 62054",
+    "build": "vue-tsc --noEmit && vite build",
+    "preview": "vite preview --host 0.0.0.0 --port 62054"
+  },
+  "dependencies": {
+    "@apollo/client": "^3.13.9",
+    "@arco-design/web-vue": "^2.57.0",
+    "@vue/apollo-composable": "^4.2.2",
+    "graphql": "^16.11.0",
+    "maplibre-gl": "^5.7.1",
+    "pinia": "^3.0.3",
+    "vue": "^3.5.20",
+    "vue-router": "^4.5.1"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue": "^6.0.1",
+    "typescript": "^5.9.2",
+    "vite": "^7.1.4",
+    "vue-tsc": "^3.0.6"
+  }
+}
